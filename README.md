@@ -1,36 +1,40 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Case study: fixing an AI-built Next.js + Supabase app
 
-## Getting Started
+A small notes app, built with an AI app builder and handed over in a typical "90% done" state. This repository shows how I diagnosed and fixed it. The git history is the case study: tag `before` is the app as delivered, `main` is the fixed version, and every fix is its own commit with the root cause in the message.
 
-First, run the development server:
+## The brief
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+> Users sometimes get redirected to the login page after signing in.
+> The dashboard occasionally fails to display the logged-in user's saved data.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## What I found
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| # | Symptom | Root cause | Fix |
+| --- | --- | --- | --- |
+| 1 | Random logouts, back to `/login` | The middleware wrote refreshed auth cookies only onto the incoming request, never onto the response. The browser kept the old tokens; once the access token expired (default 1 h), the next refresh failed. | Write cookies and Supabase's cache headers onto the response, and onto the redirect too. [`4d06197`](../../commit/4d06197) |
+| 2 | Empty dashboard after a page reload | The dashboard took the user from an in-memory cache that only the login page filled. After a reload it was empty, the query ran as `user_id=eq.undefined`, Postgres rejected it, and the error was swallowed. New notes were saved without a user for the same reason. | Load notes in a Server Component from the Supabase session, raise query errors, save notes through a Server Action. [`1da0378`](../../commit/1da0378) |
+| 3 | Not reported: **every user's notes were public** | The `notes` table had no Row Level Security. The anon key ships to every browser, so anyone could read and change all notes through the Supabase REST API. | Enable RLS with owner-only policies. [`7680142`](../../commit/7680142) |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Issue 3 is the most serious one, and nobody had noticed it. Checking RLS is part of every review I do on Supabase apps.
 
-## Learn More
+## How it was verified
 
-To learn more about Next.js, take a look at the following resources:
+- Regression tests for the middleware and the notes logic (`npm test`, 9 tests). The middleware tests fail on the `before` version and pass on `main`.
+- Type check, lint and production build pass.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Run it yourself
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Create a free Supabase project and run `supabase/schema.sql` in its SQL editor.
+2. In Supabase under Authentication, add a test user (email + password).
+3. Copy `.env.example` to `.env.local` and fill in the project URL and anon key.
+4. `npm install`, then `npm run dev`, and sign in at <http://localhost:3000/login>.
 
-## Deploy on Vercel
+Compare the two states with `git diff before main`.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Stack
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Next.js 15 (App Router), React 19, TypeScript, Tailwind CSS 4, Supabase (`@supabase/ssr`), Vitest.
+
+## About
+
+I fix and finish AI-built web apps (Lovable, Bolt, Next.js, Supabase): auth and data bugs, integrations, deployment. I work AI-assisted with Claude Code and test every change myself. Fixed price, agreed scope, written acceptance criteria.
