@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { setCachedUser } from "@/lib/session-cache";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,7 +13,7 @@ export default function LoginPage() {
   async function signIn(e: React.FormEvent) {
     e.preventDefault();
     const supabase = createClient();
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -22,8 +21,8 @@ export default function LoginPage() {
       setError(error.message);
       return;
     }
-    setCachedUser(data.user);
     router.push("/dashboard");
+    router.refresh();
   }
 
   return (
