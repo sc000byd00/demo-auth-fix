@@ -1,6 +1,6 @@
 # Case study: fixing an AI-built Next.js + Supabase app
 
-A small notes app, built with an AI app builder and handed over in a typical "90% done" state. This repository shows how I diagnosed and fixed it. The git history is the case study: tag `before` is the app as delivered, `main` is the fixed version, and every fix is its own commit with the root cause in the message.
+A demo project: a small notes app in the "90% done" state I often see in apps built with AI tools. The bugs are reproduced on purpose and modeled on real job postings; there is no client behind it. This repository shows how I diagnose and fix such issues. The git history is the case study: tag `before` is the app as delivered, `main` is the fixed version, and every fix is its own commit with the root cause in the message.
 
 ## The brief
 
